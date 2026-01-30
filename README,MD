@@ -1,0 +1,140 @@
+# VitalMonitor – Dispositivo de Monitoramento de Sinais Vitais (Raspberry Pi Pico W)
+
+Firmware para **dispositivo vestível de monitoramento assistivo de saúde** baseado no **Raspberry Pi Pico W**.
+Detecta **frequência cardíaca (BPM)**, **saturação de oxigênio (SpO₂)** e **quedas** utilizando os sensores **MPU6050** (acelerômetro/giroscópio) e **MAX30102** (oxímetro de pulso).
+
+Os dados são enviados em tempo real via **MQTT** para o backend **HealthMonitor**, onde são validados clinicamente, analisados por IA e transformados em alertas e relatórios.
+
+**Objetivo principal:** Monitoramento contínuo de idosos e pacientes com risco cardiorrespiratório, com **detecção precoce de quedas** e **anomalias vitais**.
+
+---
+
+## ✨ Funcionalidades Implementadas
+
+* Conexão Wi-Fi estável usando **CYW43** (Pico W)
+* Publicação **MQTT** em broker público (**EMQX**)
+
+  * **Batimentos:** `embarca/batimentos`
+
+    ```json
+    { "deviceId": "...", "bpm": 72, "spo2": 97 }
+    ```
+  * **Quedas:** `embarca/quedas`
+
+    * Estados: `queda_livre`, `impacto`, `QUEDA_CONFIRMADA`
+* Detecção robusta de **queda em 3 fases**
+* Leitura do **MAX30102** com média móvel e filtro de ruído
+* Arquitetura com **FreeRTOS** (3 tarefas dedicadas)
+* Logs detalhados via **UART** para debug e validação em campo
+
+---
+
+## 🧱 Hardware Utilizado
+
+| Componente          | Interface | Pinos Pico W             | Endereço I2C | Finalidade        |
+| ------------------- | --------- | ------------------------ | ------------ | ----------------- |
+| Raspberry Pi Pico W | —         | —                        | —            | MCU + Wi-Fi       |
+| MPU6050             | I2C0      | GPIO0 (SCL), GPIO1 (SDA) | `0x68`       | Detecção de queda |
+| MAX30102            | I2C1      | GPIO2 (SDA), GPIO3 (SCL) | `0x57`       | BPM e SpO₂        |
+
+---
+
+## 🔌 Diagrama de Pinagem (Conexões Físicas)
+
+### Conexões Recomendadas
+
+```text
+Raspberry Pi Pico W
++-----------------------------+
+| GPIO0 ─── SCL ─── MPU6050   |
+| GPIO1 ─── SDA ─── MPU6050   |
+|                             |
+| GPIO2 ─── SDA ─── MAX30102 |
+| GPIO3 ─── SCL ─── MAX30102 |
+|                             |
+| 3V3(OUT) ─── VCC (sensores)|
+| GND ───────── GND (todos)  |
++-----------------------------+
+```
+
+### Pinagem Detalhada
+
+| Pino Pico | Função      | Conectado a  | Observação              |
+| --------- | ----------- | ------------ | ----------------------- |
+| GPIO0     | I2C0 SCL    | MPU6050 SCL  | Pull-up interno/externo |
+| GPIO1     | I2C0 SDA    | MPU6050 SDA  | Pull-up interno/externo |
+| GPIO2     | I2C1 SDA    | MAX30102 SDA | Pull-up interno/externo |
+| GPIO3     | I2C1 SCL    | MAX30102 SCL | Pull-up interno/externo |
+| 3V3(OUT)  | Alimentação | VCC sensores | **Não usar 5V**         |
+| GND       | Terra       | GND sensores | GND comum               |
+
+**Pull-ups I2C:**
+O firmware ativa pull-ups internos via `gpio_pull_up()`.
+Para maior estabilidade (especialmente cabos longos), recomenda-se **4.7kΩ externos** entre SDA/SCL e 3.3V.
+
+---
+
+## 🧠 Integração com o Backend HealthMonitor
+
+* Protocolo: **MQTT**
+* Broker: **EMQX**
+* Cada mensagem inclui `deviceId` para associação com o paciente
+* Backend realiza:
+
+  * Validação clínica por atividade
+  * Detecção de anomalias
+  * Alertas (Telegram)
+  * Análise preditiva por IA
+
+---
+
+## 🧩 Modelagem de Dados (Visão Geral)
+
+A modelagem considera **empresa (SaaS)**, **usuários clínicos**, **pacientes**, **dispositivos**, **sinais vitais**, **atividades** e **predições de risco**.
+
+> Recomenda-se incluir no repositório a imagem do **Diagrama Entidade-Relacionamento (ERD)** gerado a partir do schema Prisma.
+
+Exemplo de inclusão no README:
+
+```markdown
+![Modelagem de Dados – HealthMonitor](docs/images/healthmonitor-erd.png)
+*Modelagem relacional do sistema HealthMonitor (Prisma + PostgreSQL)*
+```
+
+---
+
+## 🛠️ Compilação e Gravação
+
+> Mantém o mesmo processo definido anteriormente para Pico SDK + FreeRTOS.
+> (Seção não repetida aqui para evitar duplicação excessiva.)
+
+---
+
+## 🧪 Logs Esperados (UART)
+
+* Status da conexão Wi-Fi
+* Conexão MQTT (publish/ack)
+* Leitura bruta e filtrada do MAX30102
+* Estados da máquina de detecção de queda
+
+---
+
+## 🚀 Possíveis Melhorias Futuras
+
+* LED de status (conectado, leitura válida, queda)
+* Envio periódico de **nível de bateria**
+* **Deep sleep** entre leituras
+* Filtro de **Kalman** para aceleração
+* Feedback **sonoro/vibratório** em queda confirmada
+
+---
+
+## 📄 Licença
+
+MIT
+
+---
+
+**VitalMonitor – Pico Edition**
+Projeto de dispositivo vestível para monitoramento assistivo
+Fortaleza, Brasil — 2026
